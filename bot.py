@@ -5,7 +5,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from openai import OpenAI
 
 # ----------------------------------------------------
-#  Environment Variables on Railway
+# Environment Variables on Railway
 # ----------------------------------------------------
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -21,20 +21,20 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 scheduler = AsyncIOScheduler()
 
-CHANNEL_NAME = "cyber-news"   # بدون الإيموجي لأن سجل الديسكورد يشيله تلقائياً
+CHANNEL_NAME = "cyber-news"  # بدون الإيموجي
 
 # ----------------------------------------------------
 # Function: Generate Cyber Security News
 # ----------------------------------------------------
 def get_cyber_news():
     prompt = (
-        "اعطني خبر حديث وحديث قدر الإمكان متعلق بالأمن السيبراني "
+        "اعطني خبر حديث وحقيقي قدر الإمكان متعلق بالأمن السيبراني "
         "(هجمات، ثغرات، أدوات، تحديثات، تحذيرات). "
         "اكتبه بالعربية، مع عنوان واضح، ولا يتجاوز 3 جمل."
     )
 
     response = client_ai.chat.completions.create(
-        model="gpt-4o-mini",   # تقدر تغيّره لاحقًا
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200
     )
@@ -60,7 +60,7 @@ async def scheduled_job():
     await post_news()
 
 # ----------------------------------------------------
-# Command: !وريني  (اختبار البوت)
+# Command: !وريني (اختبار البوت)
 # ----------------------------------------------------
 @bot.command()
 async def وريني(ctx):
