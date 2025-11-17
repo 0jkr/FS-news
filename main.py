@@ -61,10 +61,50 @@ async def generate_cyber_news():
                     news_content = result['choices'][0]['message']['content']
                     return news_content
                 else:
-                    error_text = await response.text()
-                    return f"❌ حدث خطأ في إنشاء الخبر: {error_text}"
+                    error_data = await response.json()
+                    error_type = error_data.get('error', {}).get('type', 'unknown')
+                    error_message = error_data.get('error', {}).get('message', 'خطأ غير معروف')
+                    
+                    # معالجة أنواع الأخطاء المختلفة
+                    if error_type == 'insufficient_quota':
+                        return """❌ **خطأ في الحصة المخصصة**
+                        
+⚠️ لقد تجاوزت الحصة المخصصة في حساب OpenAI.
+
+**الحلول:**
+1. تحقق من رصيدك في: https://platform.openai.com/account/billing
+2. أضف رصيداً إلى حسابك
+3. أو انتظر حتى تجدد الحصة الشهرية
+
+للحصول على معلومات أكثر: https://platform.openai.com/docs/guides/error-codes/api-errors"""
+                    elif error_type == 'invalid_api_key':
+                        return """❌ **مفتاح API غير صحيح**
+                        
+⚠️ مفتاح OpenAI API غير صحيح أو منتهي الصلاحية.
+
+**الحل:**
+1. تحقق من مفتاح API في Railway Environment Variables
+2. احصل على مفتاح جديد من: https://platform.openai.com/api-keys"""
+                    elif error_type == 'rate_limit_exceeded':
+                        return """❌ **تجاوز الحد المسموح**
+                        
+⚠️ تم تجاوز عدد الطلبات المسموحة.
+
+**الحل:**
+انتظر قليلاً ثم حاول مرة أخرى."""
+                    else:
+                        return f"""❌ **خطأ في إنشاء الخبر**
+
+**نوع الخطأ:** {error_type}
+**الرسالة:** {error_message}
+
+للحصول على المساعدة: https://platform.openai.com/docs/guides/error-codes/api-errors"""
     except Exception as e:
-        return f"❌ حدث خطأ: {str(e)}"
+        return f"""❌ **حدث خطأ غير متوقع**
+
+**الخطأ:** {str(e)}
+
+يرجى المحاولة مرة أخرى لاحقاً."""
 
 async def send_news_to_channel():
     """إرسال خبر إلى القناة المحددة"""
