@@ -191,7 +191,6 @@ async def send_news_to_channel():
                     if news.get('image'):
                         embed.set_image(url=news['image'])
                     
-                    embed.set_footer(text="بوت الأخبار السيبرانية • مصدر مجاني")
                     await channel.send(embed=embed)
                     print(f"[{datetime.now()}] تم إرسال خبر إلى {channel.name} في {guild.name}")
                     return True
@@ -246,7 +245,6 @@ async def show_news(interaction: discord.Interaction):
         if news.get('image'):
             embed.set_image(url=news['image'])
         
-        embed.set_footer(text="بوت الأخبار السيبرانية • مصدر مجاني")
         await interaction.followup.send(embed=embed)
     except Exception as e:
         await interaction.followup.send(f"❌ حدث خطأ: {str(e)}")
