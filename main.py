@@ -5,6 +5,9 @@ from datetime import datetime
 import aiohttp
 import asyncio
 from dotenv import load_dotenv
+import feedparser
+import random
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -13,98 +16,103 @@ intents = discord.Intents.default()
 # لا نحتاج command_prefix لأننا نستخدم slash commands فقط
 bot = commands.Bot(command_prefix=None, intents=intents)
 
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 CHANNEL_NAME = '「📰」cyber-news'
 
+# مصادر RSS للأخبار السيبرانية (مجانية تماماً)
+CYBER_NEWS_RSS_FEEDS = [
+    'https://feeds.feedburner.com/TheHackersNews',
+    'https://www.bleepingcomputer.com/feed/',
+    'https://feeds.feedburner.com/securityweek',
+    'https://www.darkreading.com/rss.xml',
+    'https://krebsonsecurity.com/feed/',
+    'https://www.securityweek.com/rss',
+]
+
+def clean_html(text):
+    """تنظيف HTML من النص"""
+    if not text:
+        return ""
+    soup = BeautifulSoup(text, 'html.parser')
+    return soup.get_text().strip()
+
 async def generate_cyber_news():
-    """إنشاء خبر سيبراني باستخدام OpenAI API"""
-    url = "https://api.openai.com/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    prompt = """أنشئ خبراً سيبرانياً حديثاً ومهماً في مجال الأمن السيبراني. 
-    يجب أن يكون الخبر:
-    - حديث ومتعلق بالأمن السيبراني
-    - مكتوب بالعربية
-    - واضح ومفيد
-    - يحتوي على عنوان ووصف مختصر (3-4 جمل)
-    
-    اكتب الخبر بالصيغة التالية:
-    **العنوان**
-    [الوصف هنا]
-    """
-    
-    data = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {
-                "role": "system",
-                "content": "أنت خبير في الأمن السيبراني وأخبار التكنولوجيا. تكتب أخباراً واضحة ومفيدة بالعربية."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        "temperature": 0.7,
-        "max_tokens": 500
-    }
+    """جلب خبر سيبراني من RSS feeds (مجاني تماماً)"""
+    # اختيار مصدر عشوائي
+    rss_url = random.choice(CYBER_NEWS_RSS_FEEDS)
     
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data) as response:
+            async with session.get(rss_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status == 200:
-                    result = await response.json()
-                    news_content = result['choices'][0]['message']['content']
-                    return news_content
-                else:
-                    error_data = await response.json()
-                    error_type = error_data.get('error', {}).get('type', 'unknown')
-                    error_message = error_data.get('error', {}).get('message', 'خطأ غير معروف')
+                    content = await response.read()
+                    feed = feedparser.parse(content)
                     
-                    # معالجة أنواع الأخطاء المختلفة
-                    if error_type == 'insufficient_quota':
-                        return """❌ **خطأ في الحصة المخصصة**
+                    if feed.entries:
+                        # اختيار خبر عشوائي من آخر 10 أخبار
+                        entry = random.choice(feed.entries[:10])
                         
-⚠️ لقد تجاوزت الحصة المخصصة في حساب OpenAI.
-
-**الحلول:**
-1. تحقق من رصيدك في: https://platform.openai.com/account/billing
-2. أضف رصيداً إلى حسابك
-3. أو انتظر حتى تجدد الحصة الشهرية
-
-للحصول على معلومات أكثر: https://platform.openai.com/docs/guides/error-codes/api-errors"""
-                    elif error_type == 'invalid_api_key':
-                        return """❌ **مفتاح API غير صحيح**
+                        title = entry.get('title', 'خبر سيبراني')
+                        description = entry.get('summary', entry.get('description', ''))
+                        link = entry.get('link', '')
                         
-⚠️ مفتاح OpenAI API غير صحيح أو منتهي الصلاحية.
-
-**الحل:**
-1. تحقق من مفتاح API في Railway Environment Variables
-2. احصل على مفتاح جديد من: https://platform.openai.com/api-keys"""
-                    elif error_type == 'rate_limit_exceeded':
-                        return """❌ **تجاوز الحد المسموح**
+                        # تنظيف النص من HTML
+                        title = clean_html(title)
+                        description = clean_html(description)
                         
-⚠️ تم تجاوز عدد الطلبات المسموحة.
-
-**الحل:**
-انتظر قليلاً ثم حاول مرة أخرى."""
+                        # تقصير الوصف إذا كان طويلاً
+                        if len(description) > 300:
+                            description = description[:300] + "..."
+                        
+                        # تنسيق الخبر
+                        news_content = f"**{title}**\n\n{description}"
+                        
+                        if link:
+                            news_content += f"\n\n🔗 [اقرأ المزيد]({link})"
+                        
+                        return news_content
                     else:
-                        return f"""❌ **خطأ في إنشاء الخبر**
-
-**نوع الخطأ:** {error_type}
-**الرسالة:** {error_message}
-
-للحصول على المساعدة: https://platform.openai.com/docs/guides/error-codes/api-errors"""
+                        return "❌ لم يتم العثور على أخبار في هذا المصدر."
+                else:
+                    # محاولة مصدر آخر
+                    return await try_another_source()
+    except asyncio.TimeoutError:
+        return await try_another_source()
     except Exception as e:
-        return f"""❌ **حدث خطأ غير متوقع**
+        print(f"خطأ في جلب الخبر من {rss_url}: {str(e)}")
+        return await try_another_source()
 
-**الخطأ:** {str(e)}
-
-يرجى المحاولة مرة أخرى لاحقاً."""
+async def try_another_source():
+    """محاولة مصدر آخر إذا فشل الأول"""
+    # محاولة مصدرين آخرين
+    remaining_feeds = [f for f in CYBER_NEWS_RSS_FEEDS if f != random.choice(CYBER_NEWS_RSS_FEEDS)]
+    
+    for rss_url in remaining_feeds[:2]:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(rss_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                    if response.status == 200:
+                        content = await response.read()
+                        feed = feedparser.parse(content)
+                        
+                        if feed.entries:
+                            entry = random.choice(feed.entries[:10])
+                            title = clean_html(entry.get('title', 'خبر سيبراني'))
+                            description = clean_html(entry.get('summary', entry.get('description', '')))
+                            link = entry.get('link', '')
+                            
+                            if len(description) > 300:
+                                description = description[:300] + "..."
+                            
+                            news_content = f"**{title}**\n\n{description}"
+                            if link:
+                                news_content += f"\n\n🔗 [اقرأ المزيد]({link})"
+                            
+                            return news_content
+        except:
+            continue
+    
+    return "❌ تعذر جلب الأخبار من المصادر المتاحة. يرجى المحاولة لاحقاً."
 
 async def send_news_to_channel():
     """إرسال خبر إلى القناة المحددة"""
@@ -180,11 +188,10 @@ if __name__ == "__main__":
     if not DISCORD_TOKEN:
         print("❌ خطأ: DISCORD_TOKEN غير موجود في ملف .env")
         print("   أضف DISCORD_TOKEN في متغيرات البيئة على Railway")
-    elif not OPENAI_API_KEY:
-        print("❌ خطأ: OPENAI_API_KEY غير موجود في ملف .env")
-        print("   أضف OPENAI_API_KEY في متغيرات البيئة على Railway")
     else:
         try:
+            print("🚀 بدء تشغيل البوت...")
+            print("📰 البوت يستخدم مصادر RSS مجانية للأخبار السيبرانية")
             bot.run(DISCORD_TOKEN)
         except Exception as e:
             print(f"\n❌ حدث خطأ: {str(e)}")
