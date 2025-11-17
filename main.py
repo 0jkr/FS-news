@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 intents = discord.Intents.default()
-# intents.message_content = True  # غير مطلوب للأوامر التي تبدأ بـ prefix
+intents.message_content = True  # مطلوب للأوامر في discord.py 2.x
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -138,18 +138,20 @@ if __name__ == "__main__":
         try:
             bot.run(DISCORD_TOKEN)
         except discord.errors.PrivilegedIntentsRequired as e:
-            print("\n" + "="*60)
+            print("\n" + "="*70)
             print("❌ خطأ: Privileged Intents غير مفعّلة!")
-            print("="*60)
+            print("="*70)
             print("\n📋 يجب تفعيل MESSAGE CONTENT INTENT في Discord Developer Portal:")
+            print("\n   الخطوات:")
             print("   1. اذهب إلى: https://discord.com/developers/applications/")
-            print("   2. اختر تطبيق البوت")
-            print("   3. اذهب إلى 'Bot' في القائمة الجانبية")
-            print("   4. في قسم 'Privileged Gateway Intents':")
-            print("      ✅ فعّل 'MESSAGE CONTENT INTENT'")
-            print("   5. احفظ التغييرات")
-            print("   6. أعد تشغيل البوت على Railway")
-            print("\n" + "="*60)
+            print("   2. اختر تطبيق البوت الخاص بك")
+            print("   3. من القائمة الجانبية، اضغط على 'Bot'")
+            print("   4. ابحث عن قسم 'Privileged Gateway Intents'")
+            print("   5. فعّل الخيار: ✅ MESSAGE CONTENT INTENT")
+            print("   6. اضغط على 'Save Changes' في الأسفل")
+            print("   7. على Railway، اضغط 'Redeploy' أو أعد تشغيل البوت")
+            print("\n   ⚠️ بدون تفعيل هذا الخيار، الأوامر مثل !وريني لن تعمل!")
+            print("\n" + "="*70)
             raise
         except Exception as e:
             print(f"\n❌ حدث خطأ غير متوقع: {str(e)}")
