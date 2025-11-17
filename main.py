@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 intents = discord.Intents.default()
-intents.message_content = True
+# intents.message_content = True  # غير مطلوب للأوامر التي تبدأ بـ prefix
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
