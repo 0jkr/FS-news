@@ -74,6 +74,71 @@ def extract_image_url(entry):
     
     return None
 
+async def fetch_full_article(url):
+    """جلب محتوى المقال الكامل من الرابط"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    html = await response.text()
+                    soup = BeautifulSoup(html, 'html.parser')
+                    
+                    # إزالة scripts وstyles
+                    for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
+                        script.decompose()
+                    
+                    # محاولة العثور على المحتوى الرئيسي
+                    # البحث في tags شائعة للمحتوى
+                    content_tags = ['article', 'main', '.content', '.post-content', '.entry-content', 
+                                   '.article-content', '#content', '.story-body']
+                    
+                    article_text = ""
+                    for tag in content_tags:
+                        if tag.startswith('.'):
+                            elements = soup.select(tag)
+                        elif tag.startswith('#'):
+                            elements = soup.select(tag)
+                        else:
+                            elements = soup.find_all(tag)
+                        
+                        if elements:
+                            for element in elements:
+                                text = element.get_text(separator='\n', strip=True)
+                                if len(text) > 200:  # محتوى ذو معنى
+                                    article_text = text
+                                    break
+                        
+                        if article_text:
+                            break
+                    
+                    # إذا لم نجد محتوى محدد، نجلب كل النصوص
+                    if not article_text or len(article_text) < 200:
+                        article_text = soup.get_text(separator='\n', strip=True)
+                    
+                    # تنظيف النص
+                    lines = article_text.split('\n')
+                    cleaned_lines = []
+                    for line in lines:
+                        line = line.strip()
+                        if line and len(line) > 20:  # تجاهل الأسطر القصيرة
+                            cleaned_lines.append(line)
+                    
+                    full_text = '\n\n'.join(cleaned_lines)
+                    
+                    # تقصير إذا كان طويلاً جداً (Discord limit ~4000 chars)
+                    if len(full_text) > 3500:
+                        full_text = full_text[:3500] + "..."
+                    
+                    return full_text
+    except Exception as e:
+        print(f"خطأ في جلب المقال الكامل: {str(e)}")
+        return None
+    
+    return None
+
 async def generate_cyber_news():
     """جلب خبر سيبراني من RSS feeds وترجمته إلى العربية (مجاني تماماً)"""
     # اختيار مصدر عشوائي
@@ -116,9 +181,18 @@ async def generate_cyber_news():
                         title_en = clean_html(title_en)
                         description_en = clean_html(description_en)
                         
+                        # جلب المحتوى الكامل من المقال
+                        full_content = await fetch_full_article(link) if link else None
+                        
+                        # إذا لم نتمكن من جلب المحتوى الكامل، نستخدم الوصف
+                        if not full_content or len(full_content) < 200:
+                            content_to_translate = description_en
+                        else:
+                            content_to_translate = full_content
+                        
                         # ترجمة إلى العربية
                         title_ar = translate_to_arabic(title_en)
-                        description_ar = translate_to_arabic(description_en)
+                        description_ar = translate_to_arabic(content_to_translate)
                         
                         # استخراج رابط الصورة
                         image_url = extract_image_url(entry)
@@ -180,9 +254,18 @@ async def try_another_source():
                             description_en = clean_html(entry.get('summary', entry.get('description', '')))
                             link = entry.get('link', '')
                             
+                            # جلب المحتوى الكامل من المقال
+                            full_content = await fetch_full_article(link) if link else None
+                            
+                            # إذا لم نتمكن من جلب المحتوى الكامل، نستخدم الوصف
+                            if not full_content or len(full_content) < 200:
+                                content_to_translate = description_en
+                            else:
+                                content_to_translate = full_content
+                            
                             # ترجمة إلى العربية
                             title_ar = translate_to_arabic(title_en)
-                            description_ar = translate_to_arabic(description_en)
+                            description_ar = translate_to_arabic(content_to_translate)
                             
                             # استخراج رابط الصورة
                             image_url = extract_image_url(entry)
