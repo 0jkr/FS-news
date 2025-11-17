@@ -130,8 +130,29 @@ async def before_send_news():
 if __name__ == "__main__":
     if not DISCORD_TOKEN:
         print("❌ خطأ: DISCORD_TOKEN غير موجود في ملف .env")
+        print("   أضف DISCORD_TOKEN في متغيرات البيئة على Railway")
     elif not OPENAI_API_KEY:
         print("❌ خطأ: OPENAI_API_KEY غير موجود في ملف .env")
+        print("   أضف OPENAI_API_KEY في متغيرات البيئة على Railway")
     else:
-        bot.run(DISCORD_TOKEN)
+        try:
+            bot.run(DISCORD_TOKEN)
+        except discord.errors.PrivilegedIntentsRequired as e:
+            print("\n" + "="*60)
+            print("❌ خطأ: Privileged Intents غير مفعّلة!")
+            print("="*60)
+            print("\n📋 يجب تفعيل MESSAGE CONTENT INTENT في Discord Developer Portal:")
+            print("   1. اذهب إلى: https://discord.com/developers/applications/")
+            print("   2. اختر تطبيق البوت")
+            print("   3. اذهب إلى 'Bot' في القائمة الجانبية")
+            print("   4. في قسم 'Privileged Gateway Intents':")
+            print("      ✅ فعّل 'MESSAGE CONTENT INTENT'")
+            print("   5. احفظ التغييرات")
+            print("   6. أعد تشغيل البوت على Railway")
+            print("\n" + "="*60)
+            raise
+        except Exception as e:
+            print(f"\n❌ حدث خطأ غير متوقع: {str(e)}")
+            print(f"   نوع الخطأ: {type(e).__name__}")
+            raise
 
