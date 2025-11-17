@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 intents = discord.Intents.default()
-intents.message_content = True  # مطلوب للأوامر في discord.py 2.x
+# لا نحتاج message_content للـ slash commands
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -95,15 +95,23 @@ async def on_ready():
     print(f'{bot.user} تم تسجيل الدخول بنجاح!')
     print(f'البوت متصل بـ {len(bot.guilds)} سيرفر')
     
+    # مزامنة slash commands
+    try:
+        synced = await bot.tree.sync()
+        print(f'✅ تم مزامنة {len(synced)} أمر slash')
+    except Exception as e:
+        print(f'⚠️ خطأ في مزامنة الأوامر: {e}')
+    
     # بدء المهمة المجدولة
     if not send_news_periodically.is_running():
         send_news_periodically.start()
 
-@bot.command(name='وريني')
-async def show_news(ctx):
+# Slash command - لا يحتاج MESSAGE_CONTENT_INTENT
+@bot.tree.command(name="وريني", description="إرسال خبر سيبراني فوري للاختبار")
+async def show_news(interaction: discord.Interaction):
     """إرسال خبر سيبراني فوري للاختبار"""
     try:
-        await ctx.send("⏳ جاري إنشاء الخبر...")
+        await interaction.response.defer()
         news = await generate_cyber_news()
         
         embed = discord.Embed(
@@ -113,9 +121,9 @@ async def show_news(ctx):
             timestamp=datetime.now()
         )
         embed.set_footer(text="بوت الأخبار السيبرانية")
-        await ctx.send(embed=embed)
+        await interaction.followup.send(embed=embed)
     except Exception as e:
-        await ctx.send(f"❌ حدث خطأ: {str(e)}")
+        await interaction.followup.send(f"❌ حدث خطأ: {str(e)}")
 
 @tasks.loop(hours=6)
 async def send_news_periodically():
@@ -137,24 +145,8 @@ if __name__ == "__main__":
     else:
         try:
             bot.run(DISCORD_TOKEN)
-        except discord.errors.PrivilegedIntentsRequired as e:
-            print("\n" + "="*70)
-            print("❌ خطأ: Privileged Intents غير مفعّلة!")
-            print("="*70)
-            print("\n📋 يجب تفعيل MESSAGE CONTENT INTENT في Discord Developer Portal:")
-            print("\n   الخطوات:")
-            print("   1. اذهب إلى: https://discord.com/developers/applications/")
-            print("   2. اختر تطبيق البوت الخاص بك")
-            print("   3. من القائمة الجانبية، اضغط على 'Bot'")
-            print("   4. ابحث عن قسم 'Privileged Gateway Intents'")
-            print("   5. فعّل الخيار: ✅ MESSAGE CONTENT INTENT")
-            print("   6. اضغط على 'Save Changes' في الأسفل")
-            print("   7. على Railway، اضغط 'Redeploy' أو أعد تشغيل البوت")
-            print("\n   ⚠️ بدون تفعيل هذا الخيار، الأوامر مثل !وريني لن تعمل!")
-            print("\n" + "="*70)
-            raise
         except Exception as e:
-            print(f"\n❌ حدث خطأ غير متوقع: {str(e)}")
+            print(f"\n❌ حدث خطأ: {str(e)}")
             print(f"   نوع الخطأ: {type(e).__name__}")
             raise
 
