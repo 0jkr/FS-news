@@ -1,2 +1,15 @@
-# تجاهل كل شيء - نستخدم Nixpacks فقط
-*
+# تجاهل الملفات غير الضرورية فقط
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+ENV/
+.venv
+.git/
+.gitignore
+*.md
+.DS_Store
