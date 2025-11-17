@@ -10,7 +10,8 @@ load_dotenv()
 
 intents = discord.Intents.default()
 # لا نحتاج message_content للـ slash commands
-bot = commands.Bot(command_prefix='!', intents=intents)
+# لا نحتاج command_prefix لأننا نستخدم slash commands فقط
+bot = commands.Bot(command_prefix=None, intents=intents)
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
