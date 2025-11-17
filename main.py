@@ -13,21 +13,21 @@ from deep_translator import GoogleTranslator
 load_dotenv()
 
 intents = discord.Intents.default()
-# لا نحتاج message_content للـ slash commands
-# لا نحتاج command_prefix لأننا نستخدم slash commands فقط
-bot = commands.Bot(command_prefix=None, intents=intents)
+# نستخدم slash commands فقط، لكن command_prefix مطلوب
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 CHANNEL_NAME = '「📰」cyber-news'
 
-# مصادر RSS للأخبار السيبرانية (مجانية تماماً)
+# مصادر RSS للأخبار السيبرانية - تركز على الاختراقات والثغرات الجديدة
 CYBER_NEWS_RSS_FEEDS = [
-    'https://feeds.feedburner.com/TheHackersNews',
-    'https://www.bleepingcomputer.com/feed/',
-    'https://feeds.feedburner.com/securityweek',
-    'https://www.darkreading.com/rss.xml',
-    'https://krebsonsecurity.com/feed/',
-    'https://www.securityweek.com/rss',
+    'https://feeds.feedburner.com/TheHackersNews',  # أخبار الاختراقات والثغرات
+    'https://www.bleepingcomputer.com/feed/',  # اختراقات وثغرات أمنية
+    'https://krebsonsecurity.com/feed/',  # اختراقات مهمة
+    'https://www.darkreading.com/rss.xml',  # ثغرات واختراقات حديثة
+    'https://feeds.feedburner.com/securityweek',  # أخبار أمنية حديثة
+    'https://www.securityweek.com/rss',  # ثغرات واختراقات
+    'https://www.csoonline.com/index.rss',  # أخبار أمنية واختراقات
 ]
 
 def clean_html(text):
@@ -87,8 +87,26 @@ async def generate_cyber_news():
                     feed = feedparser.parse(content)
                     
                     if feed.entries:
-                        # اختيار خبر عشوائي من آخر 10 أخبار
-                        entry = random.choice(feed.entries[:10])
+                        # فلترة الأخبار للتركيز على الاختراقات والثغرات
+                        keywords = ['hack', 'breach', 'vulnerability', 'exploit', 'zero-day', 'cyber attack', 
+                                   'data breach', 'ransomware', 'malware', 'phishing', 'security flaw',
+                                   'CVE', 'exploit', 'hacker', 'leak', 'compromise', 'intrusion']
+                        
+                        # البحث عن أخبار تحتوي على كلمات مفتاحية مهمة
+                        relevant_entries = []
+                        for entry in feed.entries[:20]:
+                            title = entry.get('title', '').lower()
+                            summary = entry.get('summary', entry.get('description', '')).lower()
+                            text = title + ' ' + summary
+                            
+                            if any(keyword in text for keyword in keywords):
+                                relevant_entries.append(entry)
+                        
+                        # إذا وجدنا أخبار ذات صلة، نختار منها، وإلا نختار عشوائياً
+                        if relevant_entries:
+                            entry = random.choice(relevant_entries[:10])
+                        else:
+                            entry = random.choice(feed.entries[:10])
                         
                         title_en = entry.get('title', 'Cyber News')
                         description_en = entry.get('summary', entry.get('description', ''))
@@ -139,7 +157,25 @@ async def try_another_source():
                         feed = feedparser.parse(content)
                         
                         if feed.entries:
-                            entry = random.choice(feed.entries[:10])
+                            # نفس الفلترة للتركيز على الاختراقات والثغرات
+                            keywords = ['hack', 'breach', 'vulnerability', 'exploit', 'zero-day', 'cyber attack', 
+                                       'data breach', 'ransomware', 'malware', 'phishing', 'security flaw',
+                                       'CVE', 'exploit', 'hacker', 'leak', 'compromise', 'intrusion']
+                            
+                            relevant_entries = []
+                            for entry in feed.entries[:20]:
+                                title = entry.get('title', '').lower()
+                                summary = entry.get('summary', entry.get('description', '')).lower()
+                                text = title + ' ' + summary
+                                
+                                if any(keyword in text for keyword in keywords):
+                                    relevant_entries.append(entry)
+                            
+                            if relevant_entries:
+                                entry = random.choice(relevant_entries[:10])
+                            else:
+                                entry = random.choice(feed.entries[:10])
+                            
                             title_en = clean_html(entry.get('title', 'Cyber News'))
                             description_en = clean_html(entry.get('summary', entry.get('description', '')))
                             link = entry.get('link', '')
